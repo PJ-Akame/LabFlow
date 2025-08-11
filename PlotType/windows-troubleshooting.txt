@@ -1,0 +1,396 @@
+# =============================================================================
+# WINDOWS POWERSHELL トラブルシューティング - 完全解決ガイド
+# =============================================================================
+
+# =============================================================================
+# 問題診断：PowerShell スクリプト実行されない
+# =============================================================================
+
+Write-Host "🔍 PowerShell実行問題の診断を開始します..." -ForegroundColor Cyan
+
+# =============================================================================
+# STEP 1: 実行ポリシーの確認と修正
+# =============================================================================
+
+Write-Host "`n📋 STEP 1: PowerShell実行ポリシーの確認" -ForegroundColor Green
+
+# 現在の実行ポリシー確認
+$currentPolicy = Get-ExecutionPolicy
+Write-Host "現在の実行ポリシー: $currentPolicy" -ForegroundColor Yellow
+
+if ($currentPolicy -eq "Restricted") {
+    Write-Host "❌ 実行ポリシーが制限されています" -ForegroundColor Red
+    Write-Host "解決方法:" -ForegroundColor Cyan
+    Write-Host "1. PowerShellを管理者として起動" -ForegroundColor White
+    Write-Host "2. 以下のコマンドを実行:" -ForegroundColor White
+    Write-Host "   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor Green
+    
+    # 自動で実行ポリシーを変更（ユーザー確認付き）
+    $changePolicy = Read-Host "`n実行ポリシーを変更しますか？ (y/n)"
+    if ($changePolicy -eq "y" -or $changePolicy -eq "Y") {
+        try {
+            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+            Write-Host "✅ 実行ポリシーを変更しました" -ForegroundColor Green
+        } catch {
+            Write-Host "❌ 実行ポリシーの変更に失敗しました。管理者権限で実行してください" -ForegroundColor Red
+        }
+    }
+} else {
+    Write-Host "✅ 実行ポリシー: OK ($currentPolicy)" -ForegroundColor Green
+}
+
+# =============================================================================
+# STEP 2: ファイル存在確認
+# =============================================================================
+
+Write-Host "`n📋 STEP 2: ファイル存在確認" -ForegroundColor Green
+
+$requiredFiles = @("check-env.ps1", "setup.ps1", "publish.ps1", "package.json")
+$missingFiles = @()
+
+foreach ($file in $requiredFiles) {
+    if (Test-Path $file) {
+        Write-Host "✅ $file: 存在" -ForegroundColor Green
+    } else {
+        Write-Host "❌ $file: 見つかりません" -ForegroundColor Red
+        $missingFiles += $file
+    }
+}
+
+if ($missingFiles.Count -gt 0) {
+    Write-Host "`n⚠️  不足ファイルがあります。以下のスクリプトで作成します:" -ForegroundColor Yellow
+}
+
+# =============================================================================
+# STEP 3: 簡単な環境確認スクリプト（インライン版）
+# =============================================================================
+
+Write-Host "`n📋 STEP 3: 環境確認（インライン実行）" -ForegroundColor Green
+
+# Node.js確認
+try {
+    $nodeVersion = & node --version 2>$null
+    if ($nodeVersion) {
+        Write-Host "✅ Node.js: $nodeVersion" -ForegroundColor Green
+    } else {
+        throw "Node.js not found"
+    }
+} catch {
+    Write-Host "❌ Node.js: 見つかりません" -ForegroundColor Red
+    Write-Host "   インストール: https://nodejs.org/" -ForegroundColor Yellow
+}
+
+# npm確認
+try {
+    $npmVersion = & npm --version 2>$null
+    if ($npmVersion) {
+        Write-Host "✅ npm: v$npmVersion" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "❌ npm: 見つかりません" -ForegroundColor Red
+}
+
+# Python確認
+try {
+    $pythonVersion = & python --version 2>$null
+    if ($pythonVersion) {
+        Write-Host "✅ Python: $pythonVersion" -ForegroundColor Green
+    } else {
+        # python3を試す
+        $pythonVersion = & python3 --version 2>$null
+        if ($pythonVersion) {
+            Write-Host "✅ Python: $pythonVersion (python3 コマンドで利用可能)" -ForegroundColor Green
+        } else {
+            throw "Python not found"
+        }
+    }
+} catch {
+    Write-Host "❌ Python: 見つかりません" -ForegroundColor Red
+    Write-Host "   インストール: https://python.org/" -ForegroundColor Yellow
+    Write-Host "   重要: 'Add Python to PATH' にチェックを入れる" -ForegroundColor Yellow
+}
+
+# pip確認
+try {
+    $pipVersion = & pip --version 2>$null
+    if ($pipVersion) {
+        Write-Host "✅ pip: 利用可能" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "❌ pip: 見つかりません" -ForegroundColor Red
+}
+
+# Git確認
+try {
+    $gitVersion = & git --version 2>$null
+    if ($gitVersion) {
+        Write-Host "✅ Git: $gitVersion" -ForegroundColor Green
+    } else {
+        throw "Git not found"
+    }
+} catch {
+    Write-Host "❌ Git: 見つかりません" -ForegroundColor Red
+    Write-Host "   インストール: https://git-scm.com/" -ForegroundColor Yellow
+}
+
+# JupyterLab確認
+try {
+    $jupyterOutput = & jupyter --version 2>$null
+    if ($jupyterOutput) {
+        Write-Host "✅ JupyterLab: 利用可能" -ForegroundColor Green
+    } else {
+        throw "Jupyter not found"
+    }
+} catch {
+    Write-Host "⚠️  JupyterLab: 見つかりません" -ForegroundColor Yellow
+    Write-Host "   インストール: pip install jupyterlab" -ForegroundColor White
+}
+
+# =============================================================================
+# STEP 4: 不足ファイルの作成
+# =============================================================================
+
+if ($missingFiles.Count -gt 0) {
+    Write-Host "`n📋 STEP 4: 不足ファイルの作成" -ForegroundColor Green
+    
+    $createFiles = Read-Host "不足ファイルを作成しますか？ (y/n)"
+    if ($createFiles -eq "y" -or $createFiles -eq "Y") {
+        
+        # check-env.ps1 作成
+        if ("check-env.ps1" -in $missingFiles) {
+            Write-Host "📝 check-env.ps1 を作成中..." -ForegroundColor Cyan
+            
+            $checkEnvContent = @'
+# LabFlow環境確認スクリプト
+Write-Host "🔍 LabFlow Environment Check" -ForegroundColor Cyan
+Write-Host "=" * 40
+
+# Node.js
+try {
+    $nodeVersion = node --version
+    Write-Host "✅ Node.js: $nodeVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Node.js: Not found" -ForegroundColor Red
+}
+
+# Python
+try {
+    $pythonVersion = python --version
+    Write-Host "✅ Python: $pythonVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Python: Not found" -ForegroundColor Red
+}
+
+# Git
+try {
+    $gitVersion = git --version
+    Write-Host "✅ Git: $gitVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Git: Not found" -ForegroundColor Red
+}
+
+Write-Host "`n🎯 Ready to proceed!" -ForegroundColor Green
+'@
+            
+            $checkEnvContent | Out-File -FilePath "check-env.ps1" -Encoding UTF8
+            Write-Host "✅ check-env.ps1 作成完了" -ForegroundColor Green
+        }
+        
+        # setup.ps1 作成
+        if ("setup.ps1" -in $missingFiles) {
+            Write-Host "📝 setup.ps1 を作成中..." -ForegroundColor Cyan
+            
+            $setupContent = @'
+# LabFlow Setup Script
+Write-Host "🧪 LabFlow Setup Starting..." -ForegroundColor Cyan
+
+# 環境確認
+Write-Host "📋 Checking environment..." -ForegroundColor Green
+
+# Node.js dependencies
+if (Test-Path "package.json") {
+    Write-Host "📦 Installing Node.js dependencies..." -ForegroundColor Green
+    npm install
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Node.js dependencies installed" -ForegroundColor Green
+    } else {
+        Write-Host "❌ npm install failed" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "❌ package.json not found" -ForegroundColor Red
+    exit 1
+}
+
+# Python package (if pyproject.toml exists)
+if (Test-Path "pyproject.toml") {
+    Write-Host "🐍 Installing Python package..." -ForegroundColor Green
+    pip install -e .
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Python package installed" -ForegroundColor Green
+    }
+}
+
+Write-Host "✅ Setup complete!" -ForegroundColor Green
+'@
+            
+            $setupContent | Out-File -FilePath "setup.ps1" -Encoding UTF8
+            Write-Host "✅ setup.ps1 作成完了" -ForegroundColor Green
+        }
+        
+        # package.json 作成
+        if ("package.json" -in $missingFiles) {
+            Write-Host "📝 package.json を作成中..." -ForegroundColor Cyan
+            
+            $packageJsonContent = @'
+{
+  "name": "@labflow/jupyterlab-extension",
+  "version": "1.0.0",
+  "description": "LabFlow - AI Development Workflow for JupyterLab",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "echo 'Build script placeholder'",
+    "clean": "echo 'Clean script placeholder'"
+  },
+  "devDependencies": {
+    "typescript": "~5.0.2"
+  },
+  "license": "MIT"
+}
+'@
+            
+            $packageJsonContent | Out-File -FilePath "package.json" -Encoding UTF8
+            Write-Host "✅ package.json 作成完了" -ForegroundColor Green
+        }
+    }
+}
+
+# =============================================================================
+# STEP 5: 代替実行方法の提案
+# =============================================================================
+
+Write-Host "`n📋 STEP 5: 代替実行方法" -ForegroundColor Green
+
+Write-Host "PowerShellスクリプトが実行できない場合の代替手段:" -ForegroundColor Cyan
+
+Write-Host "`n方法1: 直接コマンド実行" -ForegroundColor Yellow
+Write-Host "   node --version" -ForegroundColor White
+Write-Host "   python --version" -ForegroundColor White
+Write-Host "   git --version" -ForegroundColor White
+Write-Host "   jupyter --version" -ForegroundColor White
+
+Write-Host "`n方法2: バッチファイル使用" -ForegroundColor Yellow
+Write-Host "   check-env.bat を作成して実行" -ForegroundColor White
+
+Write-Host "`n方法3: 手動セットアップ" -ForegroundColor Yellow
+Write-Host "   npm install" -ForegroundColor White
+Write-Host "   pip install -e ." -ForegroundColor White
+
+# =============================================================================
+# STEP 6: バッチファイル版の作成
+# =============================================================================
+
+Write-Host "`n📋 STEP 6: バッチファイル版の作成" -ForegroundColor Green
+
+$createBatch = Read-Host "バッチファイル版も作成しますか？ (y/n)"
+if ($createBatch -eq "y" -or $createBatch -eq "Y") {
+    
+    # check-env.bat
+    $batchCheckContent = @'
+@echo off
+echo 🔍 LabFlow Environment Check (Batch)
+echo ========================================
+
+echo Checking Node.js...
+node --version >nul 2>&1
+if %errorlevel% equ 0 (
+    node --version
+    echo ✅ Node.js: Found
+) else (
+    echo ❌ Node.js: Not found
+)
+
+echo.
+echo Checking Python...
+python --version >nul 2>&1
+if %errorlevel% equ 0 (
+    python --version
+    echo ✅ Python: Found
+) else (
+    echo ❌ Python: Not found
+)
+
+echo.
+echo Checking Git...
+git --version >nul 2>&1
+if %errorlevel% equ 0 (
+    git --version
+    echo ✅ Git: Found
+) else (
+    echo ❌ Git: Not found
+)
+
+echo.
+echo 🎯 Environment check complete!
+pause
+'@
+    
+    $batchCheckContent | Out-File -FilePath "check-env.bat" -Encoding ASCII
+    Write-Host "✅ check-env.bat 作成完了" -ForegroundColor Green
+    
+    # setup.bat  
+    $batchSetupContent = @'
+@echo off
+echo 🧪 LabFlow Setup (Batch)
+echo =========================
+
+echo 📦 Installing Node.js dependencies...
+if exist package.json (
+    call npm install
+    if %errorlevel% equ 0 (
+        echo ✅ Node.js dependencies installed
+    ) else (
+        echo ❌ npm install failed
+        pause
+        exit /b 1
+    )
+) else (
+    echo ❌ package.json not found
+    pause
+    exit /b 1
+)
+
+echo.
+echo 🐍 Installing Python package...
+if exist pyproject.toml (
+    pip install -e .
+    if %errorlevel% equ 0 (
+        echo ✅ Python package installed
+    )
+)
+
+echo.
+echo ✅ Setup complete!
+pause
+'@
+    
+    $batchSetupContent | Out-File -FilePath "setup.bat" -Encoding ASCII
+    Write-Host "✅ setup.bat 作成完了" -ForegroundColor Green
+}
+
+# =============================================================================
+# STEP 7: 次のステップの案内
+# =============================================================================
+
+Write-Host "`n🎯 次のステップ:" -ForegroundColor Cyan
+Write-Host "1. PowerShellスクリプトを試す: .\check-env.ps1" -ForegroundColor White
+Write-Host "2. バッチファイルを試す: check-env.bat" -ForegroundColor White
+Write-Host "3. 手動で環境確認: node --version, python --version" -ForegroundColor White
+Write-Host "4. 問題が解決したら: .\setup.ps1 または setup.bat" -ForegroundColor White
+
+Write-Host "`n💡 ヒント:" -ForegroundColor Yellow
+Write-Host "- PowerShellは管理者として実行" -ForegroundColor White
+Write-Host "- 実行ポリシーが制限されている場合は変更が必要" -ForegroundColor White
+Write-Host "- バッチファイル(.bat)は実行ポリシーの影響を受けない" -ForegroundColor White
+
+Write-Host "`n✅ トラブルシューティング完了!" -ForegroundColor Green
