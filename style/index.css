@@ -1,13 +1,21 @@
-.labflow-widget {
+﻿.labflow-widget {
   background: white;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
+  border-right: 1px solid #e0e0e0;
 }
 
 .labflow-widget h2 {
   color: #1976d2;
-  margin: 0 0 10px 0;
+  margin: 0 0 15px 0;
+  font-size: 18px;
 }
 
 .labflow-widget button:hover {
   background: #1565c0 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+}
+
+.labflow-widget button:active {
+  transform: translateY(0);
 }
