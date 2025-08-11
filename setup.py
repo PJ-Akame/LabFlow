@@ -1,48 +1,33 @@
-﻿from setuptools import setup, find_packages
+﻿import os
 import json
-import os
+import jupyter_core.paths
 
-# Read package.json for metadata
-with open('package.json', 'r') as f:
-    npm_pkg = json.load(f)
+data_dir = jupyter_core.paths.jupyter_data_dir()
+ext_dir = os.path.join(data_dir, 'share', 'jupyter', 'labextensions', '@labflow', 'jupyterlab-extension')
 
-# JupyterLab extension info
-lab_extension_info = {
-    "src": "labextension",
-    "dest": npm_pkg["name"]
-}
+print(f'Extension directory: {ext_dir}')
+print(f'Directory exists: {os.path.exists(ext_dir)}')
 
-setup(
-    name="labflow-extension",
-    version="1.0.0",
-    description="LabFlow AI Development Extension for JupyterLab",
-    long_description=open('README.md').read() if os.path.exists('README.md') else '',
-    long_description_content_type='text/markdown',
-    author="LabFlow Team",
-    packages=find_packages(),
-    include_package_data=True,
-    install_requires=[
-        "jupyterlab>=4.0.0,<5",
-        "jupyter-packaging>=0.12",
-    ],
-    extras_require={
-        "dev": [
-            "build",
-            "twine"
-        ]
-    },
-    python_requires=">=3.8",
-    classifiers=[
-        "Framework :: Jupyter",
-        "Framework :: Jupyter :: JupyterLab",
-        "Framework :: Jupyter :: JupyterLab :: 4",
-        "Framework :: Jupyter :: JupyterLab :: Extensions",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-    ],
-    entry_points={
-        "jupyter_labextensions": [
-            f"{npm_pkg['name']} = labflow_extension:_jupyter_labextension_paths"
-        ]
-    },
-)
+if os.path.exists(ext_dir):
+    print('\\nFiles in extension directory:')
+    for root, dirs, files in os.walk(ext_dir):
+        level = root.replace(ext_dir, '').count(os.sep)
+        indent = ' ' * 2 * level
+        print(f'{indent}{os.path.basename(root)}/')
+        subindent = ' ' * 2 * (level + 1)
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_size = os.path.getsize(file_path)
+            print(f'{subindent}{file} ({file_size} bytes)')
+            
+            # package.json の内容確認
+            if file == 'package.json':
+                try:
+                    with open(file_path, 'r') as f:
+                        package_data = json.load(f)
+                    print(f'{subindent}Package.json content:')
+                    print(f'{subindent}  Name: {package_data.get(\"name\", \"NOT SET\")}')
+                    print(f'{subindent}  Main: {package_data.get(\"main\", \"NOT SET\")}')
+                    print(f'{subindent}  JupyterLab: {package_data.get(\"jupyterlab\", \"NOT SET\")}')
+                except Exception as e:
+                    print(f'{subindent}Error reading package.json: {e}')

@@ -3,14 +3,22 @@
     "target": "ES2018",
     "lib": ["ES2018", "DOM"],
     "module": "CommonJS",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "allowJs": false,
     "outDir": "./lib",
     "rootDir": "./src",
-    "strict": false,
-    "declaration": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "preserveConstEnums": true,
     "sourceMap": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
+    "declaration": true,
+    "declarationMap": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "lib"]
+  "exclude": ["node_modules", "lib", "**/*.d.ts"]
 }

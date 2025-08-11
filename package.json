@@ -1,15 +1,41 @@
 {
   "name": "@labflow/jupyterlab-extension",
   "version": "1.0.0",
-  "description": "LabFlow AI Development Extension",
+  "description": "LabFlow - AI Development Workflow for JupyterLab",
+  "keywords": [
+    "jupyter",
+    "jupyterlab",
+    "jupyterlab-extension",
+    "ai",
+    "claude",
+    "colab",
+    "huggingface"
+  ],
+  "homepage": "https://github.com/labflow/jupyterlab-extension",
+  "bugs": {
+    "url": "https://github.com/labflow/jupyterlab-extension/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "LabFlow Team",
+    "email": "team@labflow.dev"
+  },
+  "files": [
+    "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
+    "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
+  ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "style": "style/index.css",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/labflow/jupyterlab-extension.git"
+  },
   "scripts": {
     "build": "tsc",
-    "watch": "tsc -w",
-    "clean": "rimraf lib",
-    "start": "python -m jupyterlab"
+    "build:prod": "tsc",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "watch": "tsc -w"
   },
   "dependencies": {
     "@jupyterlab/application": "^4.0.0",
@@ -17,10 +43,16 @@
     "@lumino/widgets": "^2.0.0"
   },
   "devDependencies": {
-    "typescript": "~5.0.2",
-    "rimraf": "^5.0.0"
+    "rimraf": "^5.0.1",
+    "typescript": "~5.0.2"
   },
+  "sideEffects": [
+    "style/*.css",
+    "style/index.js"
+  ],
+  "styleModule": "style/index.js",
   "jupyterlab": {
-    "extension": true
+    "extension": true,
+    "outputDir": "labflow_extension/labextension"
   }
 }
